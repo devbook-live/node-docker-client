@@ -17,6 +17,11 @@
   },
   "homepage": "https://github.com/docs-code/dockerade-test#readme",
   "dependencies": {
-    "dockerode": "^2.5.5"
+    "bluebird": "^3.5.1",
+    "dockerode": "^2.5.5",
+    "fs-extra": "^6.0.0",
+    "fs.promises": "^0.1.1",
+    "rimraf": "^2.6.2",
+    "tar-fs": "^1.16.2"
   }
 }

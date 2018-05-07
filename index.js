@@ -1,18 +1,25 @@
-const Docker = require('node-docker-api').Docker;
+const { Docker } = require('node-docker-api');
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
+const { createImageAndRunContainer } = require('./docker');
 
-docker.container.create({
-  Image: 'hello-world',
-  name: 'test'
-})
-  .then((container) => container.start())
-  .then((container) => container.logs({
-    follow: true,
-    stdout: true,
-    stderr: true
-  }))
-  .then((stream) => {
-    stream.on('data', (info) => console.log(info.toString()));
-    stream.on('error', (err) => console.log(err));
-  })
-  .catch((error) => console.log(error));
+const indexContents =
+  `'use strict';
+  
+  const express = require('express');
+  
+  // Constants
+  const PORT = 8080;
+  const HOST = '0.0.0.0';
+  
+  // App
+  const app = express();
+  app.get('/', (req, res) => {
+    res.send('Hello world');
+  });
+  
+  app.listen(PORT, HOST);
+  console.log(\`Running on http://$\{HOST}:$\{PORT}\`);`;
+
+
+createImageAndRunContainer({ indexContents, docker })
+    .then(() => console.log('Ran container.'));
