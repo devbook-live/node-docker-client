@@ -1,4 +1,5 @@
 const fse = require('fs-extra');
+const Promise = require('bluebird');
 
 const promisifyStream = stream => new Promise((resolve, reject) => {
   stream.on('data', data => console.log(data.toString()));
@@ -7,9 +8,10 @@ const promisifyStream = stream => new Promise((resolve, reject) => {
 });
 
 const makeTempDir = (indexContents) => {
-  const rndStr = Math.random().toString(36).substring(10);
+  const randomName = Math.random().toString(36).substring(10);
   const promises = [];
 
+  // Contents of Dockerfile
   const dockerFileContents =
     `FROM node:carbon
     WORKDIR /usr/src/app
@@ -19,9 +21,10 @@ const makeTempDir = (indexContents) => {
     EXPOSE 8080
     CMD ["npm", "start"]`;
 
+  // Contents of package.json
   const packageJSONContents =
     `{
-      "name": "${rndStr}",
+      "name": "${randomName}",
       "version": "1.0.0",
       "description": "Node.js on Docker",
       "author": "First Last <first.last@example.com>",
@@ -34,17 +37,18 @@ const makeTempDir = (indexContents) => {
       }
     }`;
 
+  // Contents of .dockerignore
   const dockerIgnoreContents =
     `node_modules
     npm-debug.log`;
 
-  promises.push(fse.outputFile(`/tmp/${rndStr}/Dockerfile`, dockerFileContents));
-  promises.push(fse.outputFile(`/tmp/${rndStr}/package.json`, packageJSONContents));
-  promises.push(fse.outputFile(`/tmp/${rndStr}/.dockerignore`, dockerIgnoreContents));
-  promises.push(fse.outputFile(`/tmp/${rndStr}/index.js`, indexContents));
+  promises.push(fse.outputFile(`/tmp/${randomName}/Dockerfile`, dockerFileContents));
+  promises.push(fse.outputFile(`/tmp/${randomName}/package.json`, packageJSONContents));
+  promises.push(fse.outputFile(`/tmp/${randomName}/.dockerignore`, dockerIgnoreContents));
+  promises.push(fse.outputFile(`/tmp/${randomName}/index.js`, indexContents));
 
   return {
-    tmpDir: `/tmp/${rndStr}`,
+    tmpDir: `/tmp/${randomName}`,
     tmpDirCreate: () => Promise.all(promises),
   };
 };

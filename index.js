@@ -2,6 +2,7 @@ const { Docker } = require('node-docker-api');
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 const { createImageAndRunContainer } = require('./docker');
 
+// Contents of index.js in image
 const indexContents =
   `'use strict';
   
@@ -22,4 +23,4 @@ const indexContents =
 
 
 createImageAndRunContainer({ indexContents, docker })
-    .then(() => console.log('Ran container.'));
+    .then((container) => { console.log('Ran container.'); console.log('container: ', container); });
