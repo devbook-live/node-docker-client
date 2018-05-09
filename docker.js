@@ -1,22 +1,20 @@
 /* eslint-disable id-length */
 
 const rimraf = require('rimraf');
+const fse = require('fs-extra');
 const tar = require('tar-fs');
 const { makeTempDir, promisifyStream } = require('./utils');
 
-const createImageAndRunContainer = async ({ id, docker, indexContents }) => {
+const createImageAndRunContainer = async ({ id, docker, indexContents, containers }) => {
   let cleanUpFunc;
   let container;
-
-  id = id.toLowerCase(); 
-  console.log(indexContents);
 
   try {
     // Based on the index.js contents we have
     // a tmpDir string and a tmpDirCreate function which returns a Promise
     const { tmpDir, tmpDirCreate } = makeTempDir({ id, indexContents });
     const name = 'node_docker_' + id;
-    cleanUpFunc = () => rimraf(tmpDir, () => console.log(`Deleted temporary directory ${tmpDir}.`));
+    cleanUpFunc = () => rimraf(tmpDir, () => console.warn(`Deleted temporary directory ${tmpDir}.`));
 
     // Wait for the temporary directory to be created
     await tmpDirCreate();
@@ -32,7 +30,7 @@ const createImageAndRunContainer = async ({ id, docker, indexContents }) => {
     // Create a container (running instance) based on the image
     container = await docker.container.create({ Image: name, name });
     // Start that container
-    await container.start();
+    container = await container.start();
     // Get a stream for the container's logs
     const containerStream = await container.logs({ follow: true, stdout: true, stderr: true });
     // Create a promise for the container stream
@@ -40,8 +38,12 @@ const createImageAndRunContainer = async ({ id, docker, indexContents }) => {
     // when container ends
     promisifyStream(containerStream)
       .finally(() => {
-        cleanUpFunc && cleanUpFunc();
-        container && container.delete({ force: true }).then(() => docker.image.get(name).remove());
+        if (cleanUpFunc) cleanUpFunc();
+        if (container) {
+          container.delete({ force: true })
+            .then(() => docker.image.get(name).remove())
+            .then(() => containers.delete(id));
+        }
       });
 
     // Since we don't await the previous promise
@@ -49,8 +51,18 @@ const createImageAndRunContainer = async ({ id, docker, indexContents }) => {
     // and return the container in a Promise
     return container;
   } catch (err) {
-    console.log(err);
+    console.error(err);
+    return undefined;
   }
 };
 
-module.exports = { createImageAndRunContainer };
+const updateContainer = async ({ id, indexContents, container }) => {
+  const indexjs = `/tmp/docker-${id}/index.js`;
+  console.warn('container: ', container);
+  await fse.outputFile(indexjs, indexContents);
+  await container.fs.put(indexjs, { path: '/usr/src/app' });
+  await container.restart();
+  return undefined;
+};
+
+module.exports = { createImageAndRunContainer, updateContainer };
