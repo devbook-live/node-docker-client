@@ -1,6 +1,7 @@
 const { Docker } = require('node-docker-api');
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 const { createImageAndRunContainer } = require('./docker');
+const { db } = require('./firebase/initFirebase');
 
 // Contents of index.js in image
 const indexContents =
@@ -21,6 +22,23 @@ const indexContents =
   app.listen(PORT, HOST);
   console.log(\`Running on http://$\{HOST}:$\{PORT}\`);`;
 
+const query = db.collection('snippets').where('running', '==', true);
+const containers = new Map();
 
-createImageAndRunContainer({ indexContents, docker })
-    .then((container) => { console.log('Ran container.'); console.log('container: ', container); });
+const observer = query.onSnapshot(querySnapshot => {
+  console.log(`Received query snapshot of size ${querySnapshot.size}`);
+  querySnapshot.docs.forEach(doc => {
+    const { id } = doc;
+    const indexContents = doc.get('text');
+
+    if (!containers.has(id)) {
+      createImageAndRunContainer({ id, docker, indexContents })
+        .then((container) => {
+          console.log(`Ran container with doc id ${id}.`);
+          containers.set(id, container);
+        });
+    }
+  });
+}, err => {
+  console.log(`Encountered error: ${err}`);
+});

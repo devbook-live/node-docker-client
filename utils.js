@@ -7,8 +7,8 @@ const promisifyStream = stream => new Promise((resolve, reject) => {
   stream.on('error', reject);
 });
 
-const makeTempDir = (indexContents) => {
-  const randomName = Math.random().toString(36).substring(10);
+const makeTempDir = ({ id, indexContents }) => {
+  const randomName = 'docker-' + id;
   const promises = [];
 
   // Contents of Dockerfile
