@@ -3,11 +3,14 @@
 const rimraf = require('rimraf');
 const fse = require('fs-extra');
 const tar = require('tar-fs');
-const { makeTempDir, promisifyStream } = require('./utils');
+const { makeTempDir, promisifyStream, IMAGE_NAME, CONTAINER_NAME } = require('./utils');
 
 const createImageAndRunContainer = async ({ id, docker, indexContents, containers }) => {
   let cleanUpFunc;
   let container;
+
+  const origId = id;
+  id = id.toLowerCase();
 
   try {
     // Based on the index.js contents we have
@@ -25,7 +28,7 @@ const createImageAndRunContainer = async ({ id, docker, indexContents, container
 
     // Create a promise for the image build stream
     // And wait until the image build finishes
-    await promisifyStream(imgStream);
+    await promisifyStream(imgStream, 'image', origId);
 
     // Create a container (running instance) based on the image
     container = await docker.container.create({ Image: name, name });
@@ -36,13 +39,13 @@ const createImageAndRunContainer = async ({ id, docker, indexContents, container
     // Create a promise for the container stream
     // And delete temp dir, container and image
     // when container ends
-    promisifyStream(containerStream)
+    promisifyStream(containerStream, 'container', origId)
       .finally(() => {
         if (cleanUpFunc) cleanUpFunc();
         if (container) {
+          containers.delete(id);
           container.delete({ force: true })
-            .then(() => docker.image.get(name).remove())
-            .then(() => containers.delete(id));
+            .then(() => docker.image.get(name).remove());
         }
       });
 

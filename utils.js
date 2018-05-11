@@ -1,8 +1,42 @@
+/* eslint-disable no-console */
+/* eslint-disable no-control-regex */
+
 const fse = require('fs-extra');
 const Promise = require('bluebird');
+const { db } = require('./firebase/initFirebase');
 
-const promisifyStream = stream => new Promise((resolve, reject) => {
-  stream.on('data', data => console.log(data.toString()));
+const IMAGE_NAME = 'image';
+const CONTAINER_NAME = 'container';
+const snippetOutputs = new Map();
+
+const promisifyStream = (stream, name, id) => new Promise((resolve, reject) => {
+  // If this is the stream for a container
+  // set the initial snippet output to
+  // an empty string
+  if (name === CONTAINER_NAME) {
+    snippetOutputs.set(id, '');
+  }
+
+  stream.on('data', (data) => {
+    // Remove all control characters from output
+    const newOutput = data.toString().replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+    // If this output is the stream for a container and it contains some alphanumeric
+    // character and it doesn't contain docker or node in it, add it to the snippetOutput
+    if (name === CONTAINER_NAME && newOutput.match(/[a-zA-Z0-9]/) !== null
+      && !newOutput.includes('docker') && !newOutput.includes('node')) {
+      // Replace the value in the hashtable with new value
+      const oldOutput = snippetOutputs.get(id);
+      const output = oldOutput + newOutput;
+      snippetOutputs.set(id, output);
+      console.log(`Adding new output "${newOutput}" to old output "${oldOutput}"`);
+
+      db.collection('snippetOutputs').doc(id).set({ output })
+        .then(writeResult => console.log(`Document written at: ${writeResult.writeTime}`))
+        .catch(error => console.error(`Error writing document: ${error}`));
+    }
+
+    console.log(name + ': ' + data.toString());
+  });
   stream.on('end', resolve);
   stream.on('error', reject);
 });
@@ -53,4 +87,4 @@ const makeTempDir = ({ id, indexContents }) => {
   };
 };
 
-module.exports = { makeTempDir, promisifyStream };
+module.exports = { makeTempDir, promisifyStream, IMAGE_NAME, CONTAINER_NAME };

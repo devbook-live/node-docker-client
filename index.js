@@ -10,10 +10,8 @@ const containers = new Map();
 query.onSnapshot((querySnapshot) => {
   console.warn(`Received query snapshot of size ${querySnapshot.size}`);
   querySnapshot.docs.forEach((doc) => {
-    let { id } = doc;
+    const { id } = doc;
     const indexContents = doc.get('text');
-
-    id = id.toLowerCase();
 
     if (!containers.has(id)) {
       createImageAndRunContainer({ id, docker, indexContents, containers })
