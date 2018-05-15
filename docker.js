@@ -4,18 +4,26 @@ const rimraf = require('rimraf');
 const fse = require('fs-extra');
 const tar = require('tar-fs');
 const { makeTempDir, promisifyStream, IMAGE_NAME, CONTAINER_NAME } = require('./utils');
+/*** INPUTS ***/
+// snippetId --> snippet id
+// docker --> instance of the Node Docker API
+// indexContents --> current text in the snippet
+// containers --> map of all running snippets to their associated containers 
 
-const createImageAndRunContainer = async ({ id, docker, indexContents, containers }) => {
+/*** OUTPUTS ***/
+// Success --> returns promise for a Docker container
+// Error --> returns undefined
+const createImageAndRunContainer = async ({ snippetId, docker, indexContents, containers }) => {
   let cleanUpFunc;
   let container;
 
-  const origId = id;
-  id = id.toLowerCase();
+  // Docker needs lowercase ID
+  dockerSnippetId = snippetId.toLowerCase();
 
   try {
     // Based on the index.js contents we have
     // a tmpDir string and a tmpDirCreate function which returns a Promise
-    const { tmpDir, tmpDirCreate } = makeTempDir({ id, indexContents });
+    const { tmpDir, tmpDirCreate } = makeTempDir({ dockerSnippetId, indexContents });
     const name = 'node_docker_' + id;
     cleanUpFunc = () => rimraf(tmpDir, () => console.warn(`Deleted temporary directory ${tmpDir}.`));
 

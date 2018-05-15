@@ -1,6 +1,6 @@
 const { Docker } = require('node-docker-api');
 
-const docker = new Docker({ socketPath: '/var/run/docker.sock' });
+const docker = new Docker({ socketPath: process.env.DOCKER_SERVER_ADDRESS || '/var/run/docker.sock' });
 const { createImageAndRunContainer, updateContainer } = require('./docker');
 const { db } = require('./firebase/initFirebase');
 
@@ -10,18 +10,21 @@ const containers = new Map();
 query.onSnapshot((querySnapshot) => {
   console.warn(`Received query snapshot of size ${querySnapshot.size}`);
   querySnapshot.docs.forEach((doc) => {
-    const { id } = doc;
+    const snippetId = doc.id;
     const indexContents = doc.get('text');
-
-    if (!containers.has(id)) {
-      createImageAndRunContainer({ id, docker, indexContents, containers })
+    const language = doc.get('language');
+    
+    // if there is no container assigned to the snippet id, it will create an image and run the container
+    if (!containers.has(snippetId)) {
+      createImageAndRunContainer({ snippetId, docker, indexContents, containers })
         .then((container) => {
-          console.warn(`Ran container with doc id ${id}.`);
-          containers.set(id, container);
+          console.warn(`Ran container with doc id ${snippetId}.`);
+          containers.set(snippetId, container);
         });
+    // if the containers map has the id in it, it will fetch the container to update
     } else {
-      updateContainer({ id, indexContents, container: containers.get(id) })
-        .then(() => console.warn(`Restarted container with doc id ${id}.`));
+      updateContainer({ snippetId, indexContents, container: containers.get(snippetId) })
+        .then(() => console.warn(`Restarted container with doc id ${snippetId}.`));
     }
   });
 }, (err) => {
