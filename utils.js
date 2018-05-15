@@ -41,6 +41,17 @@ const promisifyStream = (stream, name, id) => new Promise((resolve, reject) => {
   stream.on('error', reject);
 });
 
+
+
+/* INPUTS */
+// id --> snippet id (string)
+// indexContents --> code from editor (string)
+
+/* OUTPUT */
+// an object containing...
+//   tmpDir: `/tmp/${randomName}` --> path to the directory used to build the docker image
+//   tmpDirCreate: () => Promise.all(promises) --> Function that returns an array of promises. Each promise in the array is an invocation of fse.outputFile. fse.outputFile takes a file and text we want to write to that file. When fse.outputFile resolves, this means that the text we passed in has been written to the filename we passed in.
+
 const makeTempDir = ({ id, indexContents }) => {
   const randomName = 'docker-' + id;
   const promises = [];
@@ -76,7 +87,7 @@ const makeTempDir = ({ id, indexContents }) => {
     `node_modules
     npm-debug.log`;
 
-  promises.push(fse.outputFile(`/tmp/${randomName}/Dockerfile`, dockerFileContents));
+  promises.push(fse.outputFile(`/tmp/${randomName}/Dockerfile`, dockerFileContents)); // dockerFileContents is written in /Dockerfile
   promises.push(fse.outputFile(`/tmp/${randomName}/package.json`, packageJSONContents));
   promises.push(fse.outputFile(`/tmp/${randomName}/.dockerignore`, dockerIgnoreContents));
   promises.push(fse.outputFile(`/tmp/${randomName}/index.js`, indexContents));

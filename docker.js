@@ -7,8 +7,8 @@ const { makeTempDir, promisifyStream, IMAGE_NAME, CONTAINER_NAME } = require('./
 /*** INPUTS ***/
 // snippetId --> snippet id
 // docker --> instance of the Node Docker API
-// indexContents --> current text in the snippet
-// containers --> map of all running snippets to their associated containers 
+// indexContents --> current code text in the snippet
+// containers --> map of all running snippets to their associated containers
 
 /*** OUTPUTS ***/
 // Success --> returns promise for a Docker container
@@ -21,7 +21,7 @@ const createImageAndRunContainer = async ({ snippetId, docker, indexContents, co
   dockerSnippetId = snippetId.toLowerCase();
 
   try {
-    // Based on the index.js contents we have
+    // Based on the indexContents passed in on index.js we have
     // a tmpDir string and a tmpDirCreate function which returns a Promise
     const { tmpDir, tmpDirCreate } = makeTempDir({ dockerSnippetId, indexContents });
     const name = 'node_docker_' + id;

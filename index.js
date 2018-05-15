@@ -13,7 +13,7 @@ query.onSnapshot((querySnapshot) => {
     const snippetId = doc.id;
     const indexContents = doc.get('text');
     const language = doc.get('language');
-    
+
     // if there is no container assigned to the snippet id, it will create an image and run the container
     if (!containers.has(snippetId)) {
       createImageAndRunContainer({ snippetId, docker, indexContents, containers })
