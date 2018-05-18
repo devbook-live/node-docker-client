@@ -4,6 +4,7 @@ const rimraf = require('rimraf'); // "The UNIX command rm -rf for node."
 const fse = require('fs-extra');
 const tar = require('tar-fs');
 const { makeTempDir, promisifyStream, IMAGE_NAME, CONTAINER_NAME } = require('./utils');
+
 /*** INPUTS ***/
 // snippetId --> snippet id
 // docker --> instance of the Node Docker API
@@ -13,15 +14,17 @@ const { makeTempDir, promisifyStream, IMAGE_NAME, CONTAINER_NAME } = require('./
 /*** OUTPUTS ***/
 // Success --> returns promise for a Docker container
 // Error --> returns undefined
-const createImageAndRunContainer = async ({ snippetId, docker, indexContents, containers }) => {
+const createImageAndRunContainer = async ({
+  snippetId,
+  docker,
+  indexContents,
+  containers,
+}) => {
   let cleanUpFunc;
   let container;
-
-  // Docker needs lowercase ID
-  let dockerSnippetId = snippetId.toLowerCase();
+  let dockerSnippetId = snippetId.toLowerCase(); // Docker needs lowercase ID
 
   try {
-
     // (1) set up temp directory of files for docker, and a way to clean up this temp dir.
 
     // Based on the indexContents passed in on index.js we have

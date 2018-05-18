@@ -1,65 +1,79 @@
 const { Docker } = require('node-docker-api');
-
-const docker = new Docker({ socketPath: process.env.DOCKER_SERVER_ADDRESS || '/var/run/docker.sock' });
 const { createImageAndRunContainer, updateContainer } = require('./docker');
 const { db } = require('./firebase/initFirebase');
 
-const query = db.collection('snippets').where('running', '==', true);
+/* ---- INITS ---- */
+const docker = new Docker({ socketPath: process.env.DOCKER_SERVER_ADDRESS || '/var/run/docker.sock' });
 const containers = new Map(); // snippetId => container instance
 
-// let counter = 0;
-query.onSnapshot((querySnapshot) => {
-  // console.log('hello counter', counter++);
-  console.warn(`Received query snapshot of size ${querySnapshot.size}`);
-  querySnapshot.docs.forEach((doc) => {
-    if (!doc.get('running')) return;
-    const snippetId = doc.id;
-    const indexContents = doc.get('text');
-    const language = doc.get('language');
+/* ---- CONTAINERIZATION ---- */
+// Container timeout subprocess:
+const forceDestroyContainer = (snippetId) => {
+  containers.get(snippetId).kill();
+  db.collection('snippets').doc(snippetId).set({ running: false }, { merge: true });
+};
 
-    // if there is no container assigned to the snippet id, it will create an image and run the container
-    if (!containers.has(snippetId)) {
-      createImageAndRunContainer({ snippetId, docker, indexContents, containers })
-        .then((container) => {
-          console.warn(`Ran container with doc id ${snippetId}.`);
-          containers.set(snippetId, container);
-          setTimeout(() => {
-            db.collection('snippets').doc(snippetId).get()
-              .then(snippet => {
-                if (snippet.data().running) {
-                  // console.log('(5) it has been 1000ms, and we are killing this container because code is not done.');
-                  containers.get(snippetId).kill();
-                  db.collection('snippets').doc(snippetId).set({ running: false }, { merge: true });
-                }
-              });
-          }, 1000);
-        });
-    // if the containers map has the id in it, it will fetch the container to update
-    } else {
-      updateContainer({ snippetId, indexContents, container: containers.get(snippetId) })
-        .then(() => {
-          console.warn(`Restarted container with doc id ${snippetId}.`);
-          setTimeout(() => {
-            db.collection('snippets').doc(snippetId).get()
-              .then(snippet => {
-                if (snippet.data().running) {
-                  // console.log('(5) it has been 1000ms, and we are killing this container because code is not done.');
-                  containers.get(snippetId).kill();
-                  db.collection('snippets').doc(snippetId).set({ running: false }, { merge: true });
-                }
-              });
-          }, 1000);
-        });
+const timeoutCallback = async (snippetId) => {
+  const snippet = await db.collection('snippets').doc(snippetId).get();
+  if (snippet.data().running) forceDestroyContainer(snippetId);
+};
+
+const containerizationCallback = (snippetId, container, logging = true, lifeInMilliseconds = 1000) => {
+  if (logging) console.warn(`Ran container with doc id ${snippetId}.`);
+  containers.set(snippetId, container);
+  setTimeout(() => timeoutCallback(snippetId), lifeInMilliseconds);
+};
+
+const recontainerizationCallback = (snippetId, logging = true, lifeInMilliseconds = 1000) => {
+  if (logging) console.warn(`Restarted container with doc id ${snippetId}.`);
+  setTimeout(() => timeoutCallback(snippetId), lifeInMilliseconds);
+}
+
+// `containerize` and `recontainerize` wrapper methods:
+/* For a given body of code, these will attempt to
+  (a) create or update an image out of that code and its specifications, and
+  (b) run or restart a container based on that image qua filesystem.
+  The container is to be destroyed after a given "lifeInMilliseconds," or when there's
+  no more data to stream in, whichever comes first. */
+const containerize = async (snippetId, docker, indexContents, logging = true, lifeInMilliseconds = 1000) => {
+  const container = await createImageAndRunContainer({ snippetId, docker, indexContents, containers });
+  containerizationCallback(snippetId, container, logging, lifeInMilliseconds);
+};
+
+const recontainerize = (snippetId, docker, indexContents, logging = true, lifeInMilliseconds = 1000) => {
+  updateContainer({ snippetId, indexContents, container: containers.get(snippetId) });
+  recontainerizationCallback(snippetId, logging, lifeInMilliseconds);
+}
+
+/* ---- API ---- */
+const queryDocumentCallback = (doc, logging = true, lifeInMilliseconds = 1000) => {
+  if (!doc.get('running')) return; // just to double check
+  const snippetId = doc.id;
+  const indexContents = doc.get('text');
+  const language = doc.get('language');
+  // If there is no container assigned to `snippetId`, we'll create an image based on that snippet and its specifications and run a container based on that image.
+  if (!containers.has(snippetId)) containerize(snippetId, docker, indexContents, logging, lifeInMilliseconds);
+  // If a container has already been assigned to this snippet, we'll fetch the container to update appropriately.
+  else recontainerize(snippetId, docker, indexContents, logging, lifeInMilliseconds);
+};
+
+const querySnapshotCallback = (querySnapshot, logging = true, lifeInMilliseconds = 1000) => {
+  if (logging) console.warn(`Received query snapshot of size ${querySnapshot.size}`);
+  querySnapshot.docs.forEach(doc => queryDocumentCallback(doc, logging, lifeInMilliseconds));
+};
+
+/* ---- RUN SCRIPT ---- */
+(() => {
+  const logging = true;
+  const lifeInMilliseconds = 1000;
+  const query = db.collection('snippets').where('running', '==', true);
+  query.onSnapshot(querySnapshot =>
+    querySnapshotCallback(querySnapshot, logging, lifeInMilliseconds),
+    (err) => {
+      console.error(`Encountered error: ${err}`);
     }
-
+  );
+  process.on('beforeExit', () => {
+    for (const container of containers.values()) container.kill();
   });
-}, (err) => {
-  console.error(`Encountered error: ${err}`);
-});
-
-process.on('beforeExit', () => {
-  for (const container of containers.values()) {
-    // stop the container
-    container.kill();
-  }
-});
+})();
