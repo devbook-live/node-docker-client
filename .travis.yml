@@ -11,7 +11,6 @@ install:
 - npm i -g npm@5.7.1
 - npm ci
 before_deploy:
-- npm run build-client
 - rm -rf node_modules
 deploy:
   skip_cleanup: true
