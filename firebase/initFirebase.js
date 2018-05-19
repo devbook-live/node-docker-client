@@ -1,6 +1,15 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions');
-const serviceAccount = process.env.SERVICE_ACCOUNT_KEY ? process.env.SERVICE_ACCOUNT_KEY : require('../serviceAccountKey.json');
+const path = require('path');
+const fs = require('fs');
+
+if (process.env.SERVICE_ACCOUNT_KEY) {
+  fs.writeSync(path.join(__dirname, '..', 'serviceAccountKey.json'), process.env.SERVICE_ACCOUNT_KEY, (err) => {
+    if (err) throw err;
+  });
+}
+
+const serviceAccount = require('../serviceAccountKey.json');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
