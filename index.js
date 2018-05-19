@@ -75,8 +75,9 @@ const querySnapshotCallback = (querySnapshot, logging = true, lifeInMilliseconds
 
 /* ---- RUN SCRIPT ---- */
 (() => {
+  const port = process.env.port || 3000;
   app.get('/', (req, res) => res.send('Hello World!'));
-  app.listen(3000, () => console.warn('Example app listening on port 3000!'));
+  app.listen(port, () => console.warn(`Example app listening on port ${port}!`));
   console.warn('Starting query.onSnapshot...');
 
   const logging = true;
