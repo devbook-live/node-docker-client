@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 
 if (process.env.SERVICE_ACCOUNT_KEY) {
-  fs.writeSync(path.join(__dirname, '..', 'serviceAccountKey.json'), process.env.SERVICE_ACCOUNT_KEY, (err) => {
+  fs.writeFileSync(path.join(__dirname, '..', 'serviceAccountKey.json'), process.env.SERVICE_ACCOUNT_KEY, (err) => {
     if (err) throw err;
   });
 }
