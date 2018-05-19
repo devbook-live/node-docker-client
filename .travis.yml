@@ -1,0 +1,21 @@
+language: node_js
+node_js:
+- node
+dist: trusty
+sudo: false
+notifications:
+  email:
+    on_success: change
+    on_failure: always
+install:
+- npm i -g npm@5.7.1
+- npm ci
+before_deploy:
+- npm run build-client
+- rm -rf node_modules
+deploy:
+  skip_cleanup: true
+  provider: heroku
+  app: node-docker-client
+  api_key:
+    secure: PhQhppXuRFkQsBL0bD9fvdfvhmfOVqmZGpG27jkqu3i/5z0TkS3DXtgkxmcQZUNnJ8miLWsOVqa19pVH3ENj0aOMZHUHM9p7hp9bM+Em3dZ/IWiqWzBlZybbHSTmQrwrYtsIgKHJgM7RnQ5nIgI7ln4PQy/B/toh5SlX9WiY9LNQBMGckOzWH2EAnydmtdPiut/1OGvk/8GM5kNfgylxD4tLcxvYZXsLAfoFWk/rm3y7IippFGwwvkFBRvwwtV5D3QpKokS+keW6duyUd6ULghS7CkQWIENwxC+XtCBHipCUGyuZUMRx240T7NDuyMagi1+eW92TywLiUs4w77gIpwll7L62+C84pNUFFVY09vtyV3EoAogmzFFrUpjQrYPE93EXy/klhA9HWvixeWoNcCClbVo9Klm3lXNFWlZ+Zkks68ruRa6tutEOX/u8f9EJLcQxZIwhp8QeMfhD+MVkibv9WoBUh22p8nkK3sQ3XWcUzkByPi/DuqUmC7Dz08ZM4G4BzXFXGjFUz1Y59cgMIs+DgCpnVP/lnOwam70V0cFSa6z00hYji9fgpCsgolcLbG+y/lzQilg7NcOy0Y0HSvdjwHO8lN6TRMpdIrHO3tVDU2YJG52F5W3L0dAf2PqOECjF6NwrFQSEOnLLDxw+YMzu4d45sRGQiPogcajCo0s=
