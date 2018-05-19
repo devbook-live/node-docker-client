@@ -1,9 +1,16 @@
+/* eslint-disable max-len */
+/* eslint-disable no-shadow */
+
 const { Docker } = require('node-docker-api');
 const { createImageAndRunContainer, updateContainer } = require('./docker');
 const { db } = require('./firebase/initFirebase');
 
 /* ---- INITS ---- */
-const docker = new Docker({ socketPath: process.env.DOCKER_SERVER_ADDRESS || '/var/run/docker.sock' });
+
+const host = process.env.DOCKER_HOST;
+const port = process.env.DOCKER_PORT;
+const dockerConfigurationObject = host && port ? { host, port: Number(port) } : { socketPath: '/var/run/docker.sock' };
+const docker = new Docker(dockerConfigurationObject);
 const containers = new Map(); // snippetId => container instance
 
 /* ---- CONTAINERIZATION ---- */
@@ -27,7 +34,7 @@ const containerizationCallback = (snippetId, container, logging = true, lifeInMi
 const recontainerizationCallback = (snippetId, logging = true, lifeInMilliseconds = 1000) => {
   if (logging) console.warn(`Restarted container with doc id ${snippetId}.`);
   setTimeout(() => timeoutCallback(snippetId), lifeInMilliseconds);
-}
+};
 
 // `containerize` and `recontainerize` wrapper methods:
 /* For a given body of code, these will attempt to
@@ -43,14 +50,14 @@ const containerize = async (snippetId, docker, indexContents, logging = true, li
 const recontainerize = (snippetId, docker, indexContents, logging = true, lifeInMilliseconds = 1000) => {
   updateContainer({ snippetId, indexContents, container: containers.get(snippetId) });
   recontainerizationCallback(snippetId, logging, lifeInMilliseconds);
-}
+};
 
 /* ---- API ---- */
 const queryDocumentCallback = (doc, logging = true, lifeInMilliseconds = 1000) => {
   if (!doc.get('running')) return; // just to double check
   const snippetId = doc.id;
   const indexContents = doc.get('text');
-  const language = doc.get('language');
+  // const language = doc.get('language');
   // If there is no container assigned to `snippetId`, we'll create an image based on that snippet and its specifications and run a container based on that image.
   if (!containers.has(snippetId)) containerize(snippetId, docker, indexContents, logging, lifeInMilliseconds);
   // If a container has already been assigned to this snippet, we'll fetch the container to update appropriately.
@@ -67,13 +74,12 @@ const querySnapshotCallback = (querySnapshot, logging = true, lifeInMilliseconds
   const logging = true;
   const lifeInMilliseconds = 1000;
   const query = db.collection('snippets').where('running', '==', true);
-  query.onSnapshot(querySnapshot =>
-    querySnapshotCallback(querySnapshot, logging, lifeInMilliseconds),
-    (err) => {
-      console.error(`Encountered error: ${err}`);
-    }
+  query.onSnapshot(
+    querySnapshot => querySnapshotCallback(querySnapshot, logging, lifeInMilliseconds),
+    err => console.error(`Encountered error: ${err}`),
   );
   process.on('beforeExit', () => {
-    for (const container of containers.values()) container.kill();
+    // for (const container of containers.values()) container.kill();
+    containers.forEach(value => value.kill());
   });
 })();
