@@ -1,9 +1,13 @@
 /* eslint-disable max-len */
 /* eslint-disable no-shadow */
+/* eslint-disable comma-dangle */
 
 const { Docker } = require('node-docker-api');
 const { createImageAndRunContainer, updateContainer } = require('./docker');
 const { db } = require('./firebase/initFirebase');
+const express = require('express');
+
+const app = express();
 
 /* ---- INITS ---- */
 
@@ -71,12 +75,16 @@ const querySnapshotCallback = (querySnapshot, logging = true, lifeInMilliseconds
 
 /* ---- RUN SCRIPT ---- */
 (() => {
+  app.get('/', (req, res) => res.send('Hello World!'));
+  app.listen(3000, () => console.warn('Example app listening on port 3000!'));
+  console.warn('Starting query.onSnapshot...');
+
   const logging = true;
   const lifeInMilliseconds = 1000;
   const query = db.collection('snippets').where('running', '==', true);
   query.onSnapshot(
     querySnapshot => querySnapshotCallback(querySnapshot, logging, lifeInMilliseconds),
-    err => console.error(`Encountered error: ${err}`),
+    err => console.error(`Encountered error: ${err}`)
   );
   process.on('beforeExit', () => {
     // for (const container of containers.values()) container.kill();
