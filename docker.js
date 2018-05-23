@@ -5,6 +5,25 @@ const fse = require('fs-extra');
 const tar = require('tar-fs');
 const { makeTempDir, promisifyStream, IMAGE_NAME, CONTAINER_NAME } = require('./utils');
 
+
+// helper fns
+const buildImageAndCreateContainer = (tarStream, imageName, snippetId) => {
+  return docker.image.build(tarStream, { t: imageName })
+    .then((imgStream) => {
+      // Set up logging, and catch errors, for the image build stream.
+      return promisifyStream(imgStream, 'image', snippetId);
+    })
+    .then((promisifiedStream) => {
+      // Create a container based on the image.
+      return docker.container.create({ Image: imageName, name: imageName });
+    });
+}
+
+const deleteContainerAndRemoveImage = (container, imageName) =>
+  container.delete({ force: true })
+    .then(() => docker.image.get(imageName).remove());
+
+
 /*** INPUTS ***/
 // snippetId --> snippet id
 // docker --> instance of the Node Docker API
@@ -47,16 +66,10 @@ const createImageAndRunContainer = async ({
     const tarStream = await tar.pack(tmpDir);
     // Build the image (blueprint/configuration) from the tar stream
     const imageName = 'node_docker_' + dockerSnippetId;
-    const imgStream = await docker.image.build(tarStream, { t: imageName });
-    // Set up logging, and catch errors, for the image build stream:
-    await promisifyStream(imgStream, 'image', snippetId);
+
+    container = await buildImageAndCreateContainer(tarStream, imageName, snippetId);
 
 
-    // (3) go from image to container, run that container
-
-    // Create a container (running instance) based on the image
-
-    container = await docker.container.create({ Image: imageName, name: imageName });
     // console.log('(1) telling docker to create a container');
     // Start that container - this is how user code is run:
     container = await container.start();
@@ -72,12 +85,11 @@ const createImageAndRunContainer = async ({
       // .then(() => {
       //   console.log('(4) code is done')
       // })
-      .finally(() => {
+      .finally(async () => {
         if (cleanUpFunc) cleanUpFunc();
         if (container) {
           containers.delete(snippetId);
-          container.delete({ force: true })
-            .then(() => docker.image.get(imageName).remove());
+          await deleteContainerAndRemoveImage(container, imageName);
         }
       });
 
@@ -102,4 +114,5 @@ const updateContainer = async ({ snippetId, indexContents, container }) => {
   return undefined;
 };
 
-module.exports = { createImageAndRunContainer, updateContainer };
+module.exports = { createImageAndRunContainer,
+  buildImageAndCreateContainer, updateContainer, deleteContainerAndRemoveImage };
