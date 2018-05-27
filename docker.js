@@ -23,7 +23,7 @@ The file is organized as follows:
 from a streamed zip-like "tar" file. This function returns a promise
 which resolves to a streamable version of the image.
 */
-const buildImage = (tarStream, imageName, snippetId) =>
+const buildImage = (tarStream, imageName, docker) =>
   docker.image.build(tarStream, { t: imageName });
 
 /*
@@ -42,7 +42,7 @@ according to the image name passed into this function. The function
 returns apromsise which resolves to a Docker container upon which
 further CRUD actions can be performed.
 */
-const createContainer = imgName =>
+const createContainer = (imgName, docker) =>
   docker.container.create({ Image: imgName, name: imgName });
 
 
@@ -51,12 +51,12 @@ const createContainer = imgName =>
 This function builds and streams an image, and creates a container
 based upon this image. The function returns a reference to the container.
 */
-const buildImageAndCreateContainer = async (tarStream, imageName, snippetId) => {
+const buildImageAndCreateContainer = async (tarStream, imageName, snippetId, docker) => {
   let image;
   let container;
 
   try {
-    image = await buildImage(tarStream, imageName, snippetId);
+    image = await buildImage(tarStream, imageName, docker);
   } catch (err) {
     console.error(`Error building Docker image: ${err}`);
     return null;
@@ -70,7 +70,7 @@ const buildImageAndCreateContainer = async (tarStream, imageName, snippetId) => 
   }
 
   try {
-    container = await createContainer(imageName);
+    container = await createContainer(imageName, docker);
   } catch (err) {
     console.error(`Error creating Docker container: ${err}`);
     return null;
@@ -112,9 +112,13 @@ const createImageAndRunContainer = async ({
   indexContents,
   containers,
 }) => {
-  let cleanUpFunc;
+  let tmpDir;
+  let tarStream;
   let container;
-  let dockerSnippetId = snippetId.toLowerCase(); // Docker needs lowercase ID
+  let cleanUpFunc;
+
+  const dockerSnippetId = snippetId.toLowerCase(); // Docker needs lowercase ID
+  const imageName = 'node_docker_' + dockerSnippetId;
 
   try {
     /*
@@ -127,9 +131,8 @@ const createImageAndRunContainer = async ({
       tmpDir: `/tmp/${randomName}` --> path to the directory used to build the docker image
       tmpDirCreate: () => Promise.all(promises) --> Function that returns an array of promises. Each promise in the array is an invocation of fse.outputFile. fse.outputFile takes a file and text we want to write to that file. When fse.outputFile resolves, this means that the text we passed in has been written to the filename we passed in.
     */
-    const { tmpDir, tmpDirCreate } = makeTempDir({
-      dockerSnippetId, indexContents
-    });
+    const tmpDirInit = makeTempDir({ dockerSnippetId, indexContents });
+    tmpDir = tmpDirInit.tmpDir;
 
     cleanUpFunc = () => rimraf(tmpDir, () =>
       /*
@@ -140,27 +143,35 @@ const createImageAndRunContainer = async ({
     );
 
     // Wait for the temporary directory to be created:
-    await tmpDirCreate();
+    await tmpDirInit.tmpDirCreate();
+  } catch (err) {
+    console.error(`Error creating temporary directory: ${err}`);
+    return null;
+  }
 
 
+  try {
     /*
     (B) Pack the temporary directory into a zip-like "tar" stream.
     Docker best practice is to "archive" the directory like so.
     "Archive a directory" = pack everything into a single file,
     so we can unpack later. Analogy: a casette tape being wound up.
     */
-    const tarStream = await tar.pack(tmpDir);
-    const imageName = 'node_docker_' + dockerSnippetId;
+    tarStream = await tar.pack(tmpDir);
+  } catch (err) {
+    console.error(`Error creating streamable tar file: ${err}`);
+    return null;
+  }
 
 
+  try {
     /*
     (C) Build and stream an image, and create a container based
     upon this image.
     */
     container = await buildImageAndCreateContainer(
-      tarStream, imageName, snippetId
+      tarStream, imageName, snippetId, docker
     );
-
 
     /*
     (D) Start the container (in order to run user code), and
