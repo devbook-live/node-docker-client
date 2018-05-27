@@ -85,7 +85,7 @@ const buildImageAndCreateContainer = async (tarStream, imageName, snippetId, doc
 This function deletes a Docker container and returns a promise
 which resolves to the removal of the image for this container.
 */
-const deleteContainerAndRemoveImage = async (container, imageName) => {
+const deleteContainerAndRemoveImage = async (container, imageName, docker) => {
   try {
     await container.delete({ force: true });
   } catch (err) {
@@ -193,7 +193,7 @@ const createImageAndRunContainer = async ({
         if (cleanUpFunc) cleanUpFunc();
         if (container) {
           containers.delete(snippetId);
-          await deleteContainerAndRemoveImage(container, imageName);
+          await deleteContainerAndRemoveImage(container, imageName, docker);
         }
       });
 
