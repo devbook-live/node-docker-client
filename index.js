@@ -58,7 +58,7 @@ const recontainerize = (snippetId, docker, indexContents, logging = true, lifeIn
 
 /* ---- API ---- */
 const queryDocumentCallback = (doc, logging = true, lifeInMilliseconds = 1000) => {
-  if (!doc.get('running')) return; // just to double check
+  //if (!doc.get('running')) return; // just to double check
   const snippetId = doc.id;
   const indexContents = doc.get('text');
   // const language = doc.get('language');
