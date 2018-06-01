@@ -223,6 +223,9 @@ const updateContainer = async ({ snippetId, indexContents, container }) => {
 };
 
 module.exports = {
+  buildImage,
+  streamImage,
+  createContainer,
   createImageAndRunContainer,
   buildImageAndCreateContainer,
   updateContainer,
