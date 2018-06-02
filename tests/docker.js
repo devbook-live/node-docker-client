@@ -1,4 +1,5 @@
 /* global describe before after it expect */
+/* eslint-disable func-names */
 const { Docker } = require('node-docker-api');
 const { expect } = require('chai');
 const { makeTempDir } = require('../utils');
@@ -13,14 +14,15 @@ const docker = new Docker(dockerConfigurationObject);
 
 
 describe('Building an image and creating a container via `buildImageAndCreateContainer`', () => {
-
   const dockerSnippetId = 'test-snippet-id';
   const imageName = 'node_docker_' + dockerSnippetId;
   const indexContents = 'console.log("Hello, world!")';
-  let tempDirObj, tarStream, container;
+  let tempDirObj;
+  let tarStream;
+  let container;
 
-  before(async function() {
-    this.timeout(10000); // upping timeout as setup may take awhile
+  before(async function () {
+    this.timeout(20000); // upping timeout as setup may take awhile
     tempDirObj = makeTempDir({ dockerSnippetId, indexContents }); // { tmpDir, tmpDirCreate }
     await tempDirObj.tmpDirCreate();
     tarStream = await tar.pack(tempDirObj.tmpDir);
@@ -51,5 +53,4 @@ describe('Building an image and creating a container via `buildImageAndCreateCon
       expect(status.data.Config.Image).to.equal(imageName);
     });
   });
-
 });
