@@ -14,6 +14,12 @@ const app = express();
 const host = process.env.DOCKER_HOST;
 const port = process.env.DOCKER_PORT;
 const dockerConfigurationObject = host && port ? { host, port: Number(port) } : { socketPath: '/var/run/docker.sock' };
+
+// Read SSL certificates from environment variables if the environment variables are defined
+if (process.env.DOCKER_CERT_CA) dockerConfigurationObject.ca = process.env.DOCKER_CERT_CA;
+if (process.env.DOCKER_CERT_CERT) dockerConfigurationObject.cert = process.env.DOCKER_CERT_CERT;
+if (process.env.DOCKER_CERT_KEY) dockerConfigurationObject.key = process.env.DOCKER_CERT_KEY;
+
 const docker = new Docker(dockerConfigurationObject);
 const containers = new Map(); // snippetId => container instance
 
