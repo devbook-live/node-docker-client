@@ -1,5 +1,6 @@
 /* global describe before it expect */
 const { makeTempDir } = require('../utils');
+const { expect } = require('chai');
 
 // Dummy data
 const data = {
