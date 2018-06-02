@@ -6,7 +6,7 @@
   "scripts": {
     "deploy": "script/deploy",
     "start": "node index.js",
-    "test": "NODE_ENV='test' mocha -w ./tests/*"
+    "test": "NODE_ENV='test' mocha ./tests/*"
   },
   "repository": {
     "type": "git",
