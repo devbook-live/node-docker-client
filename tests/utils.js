@@ -1,5 +1,4 @@
 /* global describe before it expect */
-const expect = require('chai').expect;
 const { makeTempDir } = require('../utils');
 
 // Dummy data
@@ -9,10 +8,9 @@ const data = {
 };
 
 describe('Utility functions', () => {
-
   describe('The `makeTempDir` utility', () => {
     let tmpDirObj;
-    before(async () => tmpDirObj = await makeTempDir(data));
+    before(async () => { tmpDirObj = await makeTempDir(data); });
 
     it('Should return an object with `tmpDir` and `tmpDirCreate` entries', () => {
       expect(tmpDirObj).to.be.an('object');
@@ -36,6 +34,5 @@ describe('Utility functions', () => {
         expect(resolvedPromiseArr).to.have.lengthOf(4);
       });
     });
-
   });
 });
